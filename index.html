@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<link rel="apple-touch-icon" href="icon-trainer.png">
+<link rel="icon" type="image/png" href="icon-trainer.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pulse Trainer">
+<title>Pulse Trainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    :root { --bg:#050505; --card:#121212; --text:#f0f0f0; --accent:#bc13fe; --glow:rgba(188,19,254,.5); }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    :focus-visible { outline:2px solid var(--text); outline-offset:2px; }
+    button { touch-action:manipulation; font-family:'Orbitron',sans-serif; cursor:pointer; }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; align-items:center; min-height:100vh; min-height:100dvh; margin:0; padding:max(12px, env(safe-area-inset-top)) 0 max(12px, env(safe-area-inset-bottom)); }
+    .container { width:94%; max-width:380px; background:var(--card); padding:22px; border-radius:40px; border:1px solid #222; box-shadow:0 30px 100px #000; text-align:center; }
+    .header { display:flex; justify-content:space-between; align-items:center; }
+    h1 { color:var(--accent); font-family:'Orbitron',sans-serif; font-size:1.2rem; margin:0; text-shadow:0 0 10px var(--glow); }
+    #elapsed { font-family:'Orbitron',sans-serif; font-size:.75rem; color:#888; }
+
+    .beat-counter { display:flex; justify-content:center; align-items:center; flex-wrap:wrap; gap:12px; margin:12px 0; min-height:22px; }
+    .beat-dot { width:16px; height:16px; border-radius:50%; background:#222; border:2px solid #333; transition:.1s; }
+    .beat-dot.active { background:var(--accent); box-shadow:0 0 15px var(--glow); transform:scale(1.2); border-color:#fff; }
+
+    .display { background:#000; border-radius:35px; border:2px solid #1a1a1a; height:clamp(170px,26vh,230px); height:clamp(170px,26dvh,230px); display:flex; flex-direction:column; justify-content:center; align-items:center; transition:.07s ease-out; }
+    #bpm-val { font-family:'Orbitron',sans-serif; font-weight:900; font-size:clamp(4.5rem,24vw,7rem); line-height:.95; color:var(--accent); }
+    #bpm-val.bump { animation:bump .5s ease-out; }
+    @keyframes bump { 0% { transform:scale(1.18); } 100% { transform:scale(1); } }
+    #status { font-family:'Orbitron',sans-serif; font-size:.8rem; color:#aaa; letter-spacing:2px; margin-top:8px; }
+    #next { font-family:'Orbitron',sans-serif; font-size:1rem; color:#777; letter-spacing:1px; margin-top:6px; }
+    .display.flash-full { background:var(--accent); border-color:#fff; }
+    .display.flash-full * { color:#000 !important; }
+    .display.flash-side { border-color:var(--accent); box-shadow:inset 0 0 30px var(--glow); }
+
+    .prog { height:6px; background:#111; border-radius:10px; overflow:hidden; margin:14px 0; }
+    #fill { height:100%; width:0; background:var(--accent); box-shadow:0 0 12px var(--accent); transition:width .3s; }
+
+    .play-btn { width:100%; padding:22px; background:var(--accent); color:#000; border:2px solid var(--accent); border-radius:18px; font-weight:900; font-size:1.1rem; letter-spacing:2px; }
+    .play-btn.stop { background:#000; color:var(--accent); }
+
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; text-align:left; margin-top:18px; }
+    .fld.wide { grid-column:1 / -1; }
+    .fld label { display:block; font-family:'Orbitron',sans-serif; font-size:.55rem; color:#999; letter-spacing:1px; margin-bottom:5px; }
+    .stp { display:flex; gap:4px; }
+    .stp button { width:36px; height:40px; background:#1a1a1a; border:1px solid #333; color:var(--accent); border-radius:10px; font-size:1.1rem; user-select:none; -webkit-touch-callout:none; }
+    .stp input, .fld select { flex:1; min-width:0; width:100%; height:40px; background:#000; color:#fff; border:1px solid #333; border-radius:10px; text-align:center; font-family:'Orbitron',sans-serif; font-size:.85rem; }
+    .fld select { text-align-last:center; }
+    input[type=number] { -moz-appearance:textfield; }
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+
+    #est { font-size:.72rem; color:#888; margin:14px 0 0; }
+    .row { display:flex; gap:6px; margin-top:14px; }
+    .row select { flex:1; min-width:0; height:38px; background:#1a1a1a; color:#fff; border:1px solid #333; border-radius:10px; padding:0 8px; font-family:'Inter',sans-serif; }
+    .mini { padding:0 14px; background:#222; border:1px solid #444; color:#ccc; border-radius:10px; font-size:.6rem; }
+    .mini.del { color:#f04; }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header"><h1>PULSE TRAINER</h1><span id="elapsed" aria-label="Tempo trascorso">00:00</span></div>
+
+    <div class="beat-counter" id="beat-counter"></div>
+
+    <div class="display" id="display">
+        <div id="bpm-val">--</div>
+        <div id="status">READY</div>
+        <div id="next">--</div>
+    </div>
+    <div class="prog" role="progressbar" aria-label="Avanzamento verso il BPM obiettivo"><div id="fill"></div></div>
+
+    <button id="play" class="play-btn">START</button>
+
+    <div class="grid" id="settings"></div>
+    <p id="est"></p>
+
+    <div class="row">
+        <select id="preset" aria-label="Preset"></select>
+        <button class="mini" id="save-preset">SAVE</button>
+        <button class="mini del" id="del-preset" aria-label="Elimina preset">DEL</button>
+    </div>
+</div>
+
+<script>
+    const $ = id => document.getElementById(id);
+    const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+    const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+    const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+
+    // ---------- Configurazione ----------
+    const FIELDS = [
+        { k: 'start',  t: 'START BPM',    min: 20, max: 300 },
+        { k: 'target', t: 'TARGET BPM',   min: 20, max: 300 },
+        { k: 'step',   t: 'STEP (± BPM)', min: 1,  max: 50 },
+        { k: 'bars',   t: 'EVERY (BARS)', min: 1,  max: 64 },
+        { k: 'num',    t: 'BEATS / BAR',  min: 1,  max: 16 },
+        { k: 'den',    t: 'UNIT', opts: [[4, '/4'], [8, '/8  (♩. = BPM)']] },
+        { k: 'end',    t: 'AT TARGET', wide: true, opts: [['hold', 'HOLD TEMPO'], ['stop', 'STOP'], ['loop', 'RESTART FROM START']] }
+    ];
+    const DEF = { start: 80, target: 120, step: 4, bars: 4, num: 4, den: 4, end: 'hold' };
+
+    function sanitizeCfg(r) {
+        const c = {}; r = (r && typeof r === 'object') ? r : {};
+        FIELDS.forEach(f => {
+            const v = r[f.k];
+            if (f.opts) {
+                const ok = f.opts.some(o => String(o[0]) === String(v));
+                c[f.k] = ok ? (typeof f.opts[0][0] === 'number' ? +v : String(v)) : DEF[f.k];
+            } else c[f.k] = clamp(parseInt(v) || DEF[f.k], f.min, f.max);
+        });
+        return c;
+    }
+
+    let cfg = sanitizeCfg(), presets = {};
+    try {
+        const st = JSON.parse(localStorage.getItem('pulse_trainer'));
+        if (st) {
+            cfg = sanitizeCfg(st.cfg);
+            Object.keys(st.presets || {}).forEach(n => { if (n !== '__proto__') presets[n] = sanitizeCfg(st.presets[n]); });
+        }
+    } catch (e) { /* storage non disponibile o corrotto: valori predefiniti */ }
+    function saveState() { try { localStorage.setItem('pulse_trainer', JSON.stringify({ cfg, presets })); } catch (e) { /* ignora */ } }
+
+    // ---------- Logica della progressione ----------
+    // Prossimo tempo verso il target (sale o scende); null = fine, nessun cambio
+    function nextBpm(bpm) {
+        const t = cfg.target;
+        if (bpm === t) return cfg.end === 'loop' ? cfg.start : null;
+        return bpm < t ? Math.min(bpm + cfg.step, t) : Math.max(bpm - cfg.step, t);
+    }
+    const beatDur = bpm => (60 / bpm) / (cfg.den === 8 ? 3 : 1);
+
+    function updateEst() {
+        let bpm = cfg.start, sec = 0, n = 1;
+        for (let g = 0; g < 500; g++) {
+            sec += cfg.bars * cfg.num * beatDur(bpm);
+            if (bpm === cfg.target) break;
+            bpm = bpm < cfg.target ? Math.min(bpm + cfg.step, cfg.target) : Math.max(bpm - cfg.step, cfg.target);
+            n++;
+        }
+        $('est').textContent = `RAMP ≈ ${fmt(sec)} · ${n} TEMPO${n > 1 ? 'S' : ''}`;
+    }
+
+    // ---------- UI ----------
+    function hold(b, fn) {                                   // tap = ±1, tenendo premuto si ripete
+        let t, r, fired = false;
+        const stop = () => { clearTimeout(t); clearInterval(r); };
+        b.addEventListener('pointerdown', () => { stop(); fired = false; t = setTimeout(() => { fired = true; fn(); r = setInterval(fn, 90); }, 450); });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+        b.addEventListener('contextmenu', e => e.preventDefault());
+        b.addEventListener('click', () => { if (!fired) fn(); fired = false; });
+    }
+
+    function buildFields() {
+        const g = $('settings'); g.innerHTML = '';
+        FIELDS.forEach(f => {
+            const w = document.createElement('div'); w.className = 'fld' + (f.wide ? ' wide' : '');
+            const l = document.createElement('label'); l.htmlFor = 'f-' + f.k; l.textContent = f.t; w.appendChild(l);
+            if (f.opts) {
+                const s = document.createElement('select'); s.id = 'f-' + f.k;
+                f.opts.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; s.appendChild(o); });
+                s.onchange = () => setField(f, s.value);
+                w.appendChild(s);
+            } else {
+                const row = document.createElement('div'); row.className = 'stp';
+                const inp = document.createElement('input');
+                inp.type = 'number'; inp.id = 'f-' + f.k; inp.inputMode = 'numeric'; inp.min = f.min; inp.max = f.max;
+                inp.onchange = () => setField(f, inp.value);
+                const mk = (sym, d) => {
+                    const b = document.createElement('button'); b.type = 'button'; b.textContent = sym;
+                    b.setAttribute('aria-label', (d < 0 ? 'Diminuisci ' : 'Aumenta ') + f.t);
+                    hold(b, () => setField(f, cfg[f.k] + d)); return b;
+                };
+                row.append(mk('−', -1), inp, mk('+', 1)); w.appendChild(row);
+            }
+            g.appendChild(w);
+        });
+        syncFields();
+    }
+    function syncFields() { FIELDS.forEach(f => { $('f-' + f.k).value = cfg[f.k]; }); }
+
+    function setField(f, v) {
+        if (f.opts) cfg[f.k] = typeof f.opts[0][0] === 'number' ? +v : v;
+        else cfg[f.k] = clamp(parseInt(v) || cfg[f.k], f.min, f.max);
+        syncFields(); $('preset').value = ''; saveState(); refreshIdle(); renderDots(); updateEst();
+    }
+
+    function renderDots() {
+        const c = $('beat-counter'); c.innerHTML = '';
+        const n = cfg.den === 8 ? Math.ceil(cfg.num / 3) : cfg.num;
+        for (let i = 0; i < n; i++) { const d = document.createElement('div'); d.className = 'beat-dot'; d.id = 'dot-' + i; c.appendChild(d); }
+    }
+
+    function refreshIdle() {
+        if (isPlaying) return;
+        $('bpm-val').textContent = cfg.start; $('status').textContent = 'READY';
+        $('next').textContent = '→ ' + cfg.target; $('fill').style.width = '0%';
+    }
+
+    function renderPresets() {
+        const s = $('preset'); s.innerHTML = '';
+        const o0 = document.createElement('option'); o0.value = ''; o0.textContent = 'PRESETS'; s.appendChild(o0);
+        Object.keys(presets).forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; s.appendChild(o); });
+    }
+
+    $('preset').onchange = e => {
+        const n = e.target.value;
+        if (!n || !has(presets, n)) return;
+        if (isPlaying) stopPlay();
+        cfg = sanitizeCfg(presets[n]);
+        syncFields(); saveState(); refreshIdle(); renderDots(); updateEst();
+    };
+    $('save-preset').onclick = () => {
+        const input = prompt('Nome del preset:');
+        const name = input ? input.trim().toUpperCase().slice(0, 24) : '';
+        if (!name || name === '__PROTO__') return;
+        presets[name] = { ...cfg }; saveState(); renderPresets(); $('preset').value = name;
+    };
+    $('del-preset').onclick = () => {
+        const n = $('preset').value;
+        if (!n || !confirm(`Eliminare il preset ${n}?`)) return;
+        delete presets[n]; saveState(); renderPresets();
+    };
+
+    // ---------- Audio ----------
+    let isPlaying = false, audioCtx = null, timerID = null, nextTickTime = 0, finishAt = 0;
+    let curBpm = 0, barInTempo = 0, currentBeat = 0, changedFlag = false;
+    let keepAlive = null, wakeLock = null, t0 = 0, elapsedTimer = null;
+
+    function initAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    // Fruscio quasi inudibile: tiene aperto il canale dei ricevitori Bluetooth tra un click e l'altro
+    const KEEPALIVE_GAIN = 0.004;
+    function startKeepAlive() {
+        if (keepAlive) return;
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate), ch = buf.getChannelData(0);
+        for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+        const src = audioCtx.createBufferSource(), g = audioCtx.createGain();
+        src.buffer = buf; src.loop = true; g.gain.value = KEEPALIVE_GAIN;
+        src.connect(g); g.connect(audioCtx.destination); src.start();
+        keepAlive = { src, g };
+    }
+    function stopKeepAlive() {
+        if (!keepAlive) return;
+        try { keepAlive.src.stop(); } catch (e) { /* già fermo */ }
+        keepAlive.g.disconnect(); keepAlive = null;
+    }
+    async function setWake(on) {
+        try {
+            if (on && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+            else if (wakeLock) { await wakeLock.release(); wakeLock = null; }
+        } catch (e) { /* non critico */ }
+    }
+
+    function playClick(t, b, info, den) {
+        let acc = (b === 0);
+        if (den === 8 && b % 3 === 0) acc = true;
+        const first = (b === 0 && info.changed);              // primo battito di un nuovo tempo: click più acuto
+        const freq = first ? 1800 : (b === 0 ? 1200 : (acc ? 800 : 400));
+        const vol = b === 0 ? 0.4 : (acc ? 0.2 : 0.1);
+        const osc = audioCtx.createOscillator(), env = audioCtx.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, t);
+        env.gain.setValueAtTime(0.0001, t);
+        env.gain.linearRampToValueAtTime(vol, t + 0.003);
+        env.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+        osc.connect(env); env.connect(audioCtx.destination);
+        osc.start(t); osc.stop(t + 0.1);
+
+        setTimeout(() => {                                    // l'interfaccia segue l'audio, non il contrario
+            if (!isPlaying) return;
+            const d = $('display');
+            $('bpm-val').textContent = info.bpm;
+            $('status').textContent = `BAR ${info.bar}/${info.bars}`;
+            $('next').textContent = info.next === null ? 'TARGET' : (info.next > info.bpm ? '▲ ' : '▼ ') + info.next;
+            $('fill').style.width = info.pct + '%';
+            if (info.changed && b === 0) { const v = $('bpm-val'); v.classList.remove('bump'); void v.offsetWidth; v.classList.add('bump'); }
+            if (acc) { d.classList.add(b === 0 ? 'flash-full' : 'flash-side'); setTimeout(() => d.classList.remove('flash-full', 'flash-side'), 60); }
+            const idx = den === 8 ? Math.floor(b / 3) : b;
+            document.querySelectorAll('.beat-dot').forEach(x => x.classList.remove('active'));
+            const dot = $('dot-' + idx); if (dot) dot.classList.add('active');
+        }, Math.max(0, (t - audioCtx.currentTime) * 1000));
+    }
+
+    function scheduler() {
+        if (finishAt) {                                       // fine a "STOP": ferma allo scadere dell'ultima battuta
+            timerID = setTimeout(() => { if (isPlaying) stopPlay('DONE'); }, Math.max(0, (finishAt - audioCtx.currentTime) * 1000));
+            return;
+        }
+        while (nextTickTime < audioCtx.currentTime + 0.1) {
+            const span = Math.abs(cfg.target - cfg.start);
+            const info = {
+                bpm: curBpm, bar: barInTempo + 1, bars: cfg.bars, next: nextBpm(curBpm), changed: changedFlag,
+                pct: span ? Math.round(Math.abs(curBpm - cfg.start) / span * 100) : 100
+            };
+            changedFlag = false;
+            playClick(nextTickTime, currentBeat, info, cfg.den);
+            nextTickTime += beatDur(curBpm);
+            if (++currentBeat >= cfg.num) {
+                currentBeat = 0;
+                if (++barInTempo >= cfg.bars) {
+                    barInTempo = 0;
+                    if (curBpm === cfg.target && cfg.end === 'stop') { finishAt = nextTickTime; break; }
+                    const n = nextBpm(curBpm);
+                    if (n !== null && n !== curBpm) { curBpm = n; changedFlag = true; }
+                }
+            }
+        }
+        timerID = setTimeout(scheduler, 25);
+    }
+
+    function tick() { $('elapsed').textContent = fmt((performance.now() - t0) / 1000); }
+    function setBtn() { $('play').textContent = isPlaying ? 'STOP' : 'START'; $('play').classList.toggle('stop', isPlaying); }
+
+    function startPlay() {
+        initAudio();
+        isPlaying = true; curBpm = cfg.start; barInTempo = 0; currentBeat = 0; finishAt = 0; changedFlag = false;
+        startKeepAlive(); setWake(true);
+        nextTickTime = audioCtx.currentTime + 0.25;           // tempo al link BT per "svegliarsi"
+        t0 = performance.now(); tick(); elapsedTimer = setInterval(tick, 1000);
+        setBtn(); scheduler();
+    }
+    function stopPlay(msg) {
+        isPlaying = false; clearTimeout(timerID); clearInterval(elapsedTimer);
+        stopKeepAlive(); setWake(false); setBtn();
+        document.querySelectorAll('.beat-dot').forEach(x => x.classList.remove('active'));
+        $('display').classList.remove('flash-full', 'flash-side');
+        refreshIdle(); if (msg) $('status').textContent = msg;
+    }
+    const togglePlay = () => (isPlaying ? stopPlay() : startPlay());
+
+    $('play').onclick = togglePlay;
+    document.addEventListener('keydown', e => {              // Spazio = start/stop (anche da pedale)
+        if (/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(e.target.tagName)) return;
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); togglePlay(); }
+    });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && isPlaying) setWake(true); });
+
+    buildFields(); renderPresets(); renderDots(); updateEst(); refreshIdle(); setBtn();
+</script>
+</body>
+</html>
